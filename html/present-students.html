@@ -59,6 +59,8 @@
                         <th>Student Name</th>
                         <th>Roll Number</th>
                         <th>Class</th>
+                        <th>Classroom</th>
+                        <th>Room Number</th>
                         <th>Check-in Time</th>
                     </tr>
                 </thead>
@@ -101,17 +103,31 @@
                     // Populate table
                     data.forEach(student => {
                         const row = document.createElement('tr');
+                        // Format the check-in time
+                        const checkInTime = new Date(student.checkInTime);
+                        const formattedTime = checkInTime.toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        });
+
                         row.innerHTML = `
                             <td>${escapeHtml(student.name)}</td>
                             <td>${escapeHtml(student.rollNumber)}</td>
                             <td>${escapeHtml(student.class)}</td>
-                            <td>${escapeHtml(student.checkInTime)}</td>
+                            <td>${escapeHtml(student.classroom?.name || '-')}</td>
+                            <td>${escapeHtml(student.classroom?.roomNumber || '-')}</td>
+                            <td>${escapeHtml(formattedTime)}</td>
                         `;
                         tableBody.appendChild(row);
                     });
                 })
                 .catch(error => {
                     console.error('Error fetching present students:', error);
+                    errorAlert.textContent = error.message || 'Error loading student data. Please try again later.';
                     errorAlert.classList.remove('d-none');
                 })
                 .finally(() => {
