@@ -171,6 +171,56 @@ app.get('/students/:classroomId', async (req, res) => {
     }
 });
 
+// Route to get present students for current date
+app.get('/present-students', async (req, res) => {
+    try {
+        // Get current date (start of day)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Get end of day
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        // Find all attendance records for today
+        const attendanceRecords = await Attendance.find({
+            date: {
+                $gte: today,
+                $lt: tomorrow
+            }
+        });
+
+        // Get all student IDs marked as present
+        const presentStudentIds = new Set();
+        attendanceRecords.forEach(record => {
+            for (const [studentId, status] of record.attendance.entries()) {
+                if (status === 'Present') {
+                    presentStudentIds.add(studentId);
+                }
+            }
+        });
+
+        // Get student details for present students
+        const presentStudents = await Student.find({
+            _id: { $in: Array.from(presentStudentIds) }
+        });
+
+        res.json({
+            success: true,
+            data: {
+                students: presentStudents,
+                totalCount: presentStudents.length
+            }
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching present students',
+            error: err.message
+        });
+    }
+});
+
 // Route to mark attendance
 app.post('/mark-attendance', async (req, res) => {
     const { classroomId, attendance } = req.body;
