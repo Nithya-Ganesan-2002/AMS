@@ -188,30 +188,41 @@ app.get('/present-students', async (req, res) => {
                 $gte: today,
                 $lt: tomorrow
             }
-        });
+        }).populate('classroomId');
 
-        // Get all student IDs marked as present
-        const presentStudentIds = new Set();
-        attendanceRecords.forEach(record => {
+        // Create a map to store student data with their check-in time and classroom info
+        const presentStudentsMap = new Map();
+
+        // Process attendance records
+        for (const record of attendanceRecords) {
             for (const [studentId, status] of record.attendance.entries()) {
-                if (status === 'Present') {
-                    presentStudentIds.add(studentId);
+                if (status === 'Present' && !presentStudentsMap.has(studentId)) {
+                    presentStudentsMap.set(studentId, {
+                        checkInTime: record.date.toLocaleTimeString(),
+                        classroom: record.classroomId
+                    });
                 }
             }
-        });
+        }
 
         // Get student details for present students
-        const presentStudents = await Student.find({
-            _id: { $in: Array.from(presentStudentIds) }
+        const students = await Student.find({
+            _id: { $in: Array.from(presentStudentsMap.keys()) }
         });
 
-        res.json({
-            success: true,
-            data: {
-                students: presentStudents,
-                totalCount: presentStudents.length
-            }
+        // Combine student details with classroom information
+        const presentStudents = students.map(student => {
+            const attendanceInfo = presentStudentsMap.get(student._id.toString());
+            return {
+                name: student.name,
+                rollNumber: student.roll,
+                email: student.email,
+                class: attendanceInfo.classroom ? attendanceInfo.classroom.name : 'N/A',
+                checkInTime: attendanceInfo.checkInTime
+            };
         });
+
+        res.json(presentStudents);
     } catch (err) {
         res.status(500).json({
             success: false,
